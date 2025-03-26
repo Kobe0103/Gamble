@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>High Stakes Poker Pro</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/17.0.2/umd/react.development.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/17.0.2/umd/react-dom.development.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.26.0/babel.min.js"></script>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: 'Arial', sans-serif;
+            background-color: #1a2238;
+            color: #e0e0ff;
+        }
+        #root {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+        .game-container {
+            background-color: #253659;
+            border-radius: 20px;
+            padding: 30px;
+            width: 100%;
+            max-width: 1200px;
+            max-height: 95vh;
+            box-shadow: 0 15px 30px rgba(0,0,0,0.4);
+            position: relative;
+            overflow-y: auto;
+        }
+        .card-stack {
+            display: flex;
+            position: relative;
+            height: 220px;
+            margin: 10px 0;
+            overflow-x: auto;
+            padding-bottom: 20px;
+        }
+        .card {
+            width: 160px;
+            height: 220px;
+            background-color: white;
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: black;
+            font-size: 48px;
+            font-weight: bold;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+            position: absolute;
+            transition: all 0.3s ease;
+            border: 3px solid transparent;
+            flex-shrink: 0;
+        }
+        .card:hover {
+            transform: translateY(-20px);
+            z-index: 10;
+            border-color: #3498db;
+        }
+        .card::before {
+            content: attr(data-suit);
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            font-size: 36px;
+        }
+        .card::after {
+            content: attr(data-suit);
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            font-size: 36px;
+        }
+        .card.heart, .card.diamond {
+            color: red;
+        }
+        .card.club, .card.spade {
+            color: black;
+        }
+        .card.hidden {
+            background-color: #7f8c8d;
+            color: transparent;
+        }
+        .card.hidden::before,
+        .card.hidden::after {
+            display: none;
+        }
+        .bank-display {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: #27ae60;
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 18px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            z-index: 10;
+        }
+        .opponents-area {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            overflow-x: auto;
+        }
+        .opponent {
+            background-color: #2c3e50;
+            border-radius: 10px;
+            padding: 15px;
+            width: 22%;
+            min-width: 180px;
+            text-align: center;
+            flex-shrink: 0;
+            margin-right: 10px;
+        }
+        .opponent-cards {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        .opponent-card {
+            width: 80px;
+            height: 120px;
+            background-color: #7f8c8d;
+            border-radius: 10px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-weight: bold;
+        }
+        .game-info {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .betting-area {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .bet-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+        }
+        .btn {
+            background-color: #ff6b6b;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .btn:hover {
+            background-color: #ff4757;
+            transform: translateY(-3px);
+        }
+        .btn.disabled {
+            background-color: #7f8c8d;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .bet-btn {
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .bet-btn:disabled {
+            background-color: #7f8c8d;
+            cursor: not-allowed;
+        }
+        .confirm-bet-btn {
+            background-color: #f39c12;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .confirm-bet-btn:hover {
+            background-color: #e67e22;
+        }
+        .confirm-bet-btn.disabled {
+            background-color: #7f8c8d;
+            cursor: not-allowed;
+        }
+        .game-controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .winner-notification {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 30px 50px;
+            border-radius: 15px;
+            font-size: 36px;
+            font-weight: bold;
+            text-align: center;
+            z-index: 1000;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.7);
+            animation: pulse 1.5s infinite;
+            border: 3px solid gold;
+        }
+        .winner-notification.win {
+            color: #2ecc71;
+            border-color: #2ecc71;
+        }
+        .winner-notification.lose {
+            color: #ff4757;
+            border-color: #ff4757;
+        }
+        .winner-notification.tie {
+            color: #f39c12;
+            border-color: #f39c12;
+        }
+        .hand-combination {
+            background-color: rgba(0,0,0,0.5);
+            color: white;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            text-align: center;
+            font-weight: bold;
+        }
+        .stats-panel {
+            background-color: rgba(0,0,0,0.3);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        @keyframes pulse {
+            0% { transform: translate(-50%, -50%) scale(1); }
+            50% { transform: translate(-50%, -50%) scale(1.05); }
+            100% { transform: translate(-50%, -50%) scale(1); }
+        }
+        @media (max-width: 768px) {
+            .game-container {
+                padding: 15px;
+            }
+            .opponents-area {
+                flex-direction: column;
+            }
+            .opponent {
+                width: 100%;
+                margin-bottom: 10px;
+            }
+            .card-stack {
+                height: 180px;
+            }
+            .card {
+                width: 120px;
+                height: 180px;
+                font-size: 36px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const SUITS = ['♥', '♦', '♣', '♠'];
+        const VALUES = ['2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K', 'A'];
+        const RANK_VALUES = {
+            '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 7, '8': 8, 
+            '9': 9, '10': 10, 'J': 11, 'Q': 12, 'K': 13, 'A': 14
+        };
+
+        const OPPONENT_NAMES = [
+            'Texas Tycoon', 'Vegas Viper', 'Poker Princess', 
+            'River City Rick', 'Bluff Master', 'Casino King'
+        ];
+
+        function createDeck() {
+            return SUITS.flatMap(suit => 
+                VALUES.map(value => ({
+                    suit,
+                    value,
+                    color: ['♥', '♦'].includes(suit) ? 'red' : 'black'
+                }))
+            );
+        }
+
+        function shuffleDeck(deck) {
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
+            return deck;
+        }
+
+        function sortCardsByRank(cards) {
+            return [...cards].sort((a, b) => RANK_VALUES[b.value] - RANK_VALUES[a.value]);
+        }
+
+        function evaluatePokerHand(hand, communityCards) {
+            const fullHand = [...hand, ...communityCards];
+            if (fullHand.length < 5) return { rank: 'Incomplete Hand', value: 0 };
+            
+            const sortedHand = sortCardsByRank(fullHand);
+            const valueCounts = {};
+            const suitCounts = {};
+            
+            for (const card of fullHand) {
+                valueCounts[card.value] = (valueCounts[card.value] || 0) + 1;
+                suitCounts[card.suit] = (suitCounts[card.suit] || 0) + 1;
+            }
+            
+            const counts = Object.values(valueCounts);
+            const suits = Object.keys(suitCounts);
+            const isFlush = suits.some(suit => suitCounts[suit] >= 5);
+            
+            // Check for straight
+            let isStraight = false;
+            let straightHighCard = null;
+            const uniqueValues = [...new Set(sortedHand.map(card => RANK_VALUES[card.value]))];
+            
+            // Check for regular straight
+            for (let i = 0; i <= uniqueValues.length - 5; i++) {
+                if (uniqueValues[i] - uniqueValues[i + 4] === 4) {
+                    isStraight = true;
+                    straightHighCard = uniqueValues[i];
+                    break;
+                }
+            }
+            
+            // Check for wheel straight (A-2-3-4-5)
+            if (!isStraight && uniqueValues.includes(14) && uniqueValues.includes(5) && 
+                uniqueValues.includes(4) && uniqueValues.includes(3) && uniqueValues.includes(2)) {
+                isStraight = true;
+                straightHighCard = 5; // The 5 is the high card in a wheel
+            }
+            
+            // Check for royal/straight flush
+            if (isStraight && isFlush) {
+                // Check for royal flush
+                if (straightHighCard === 14 && suitCounts[sortedHand[0].suit] >= 5) {
+                    return { rank: 'Royal Flush', value: 10 };
+                }
+                return { rank: 'Straight Flush', value: 9, highCard: straightHighCard };
+            }
+            
+            // Check for four of a kind
+            if (counts.includes(4)) {
+                const quadValue = Object.keys(valueCounts).find(v => valueCounts[v] === 4);
+                const kicker = sortedHand.find(card => card.value !== quadValue).value;
+                return { 
+                    rank: 'Four of a Kind', 
+                    value: 8, 
+                    highCard: RANK_VALUES[quadValue],
+                    kicker: RANK_VALUES[kicker]
+                };
+            }
+            
+            // Check for full house
+            if (counts.includes(3) && counts.includes(2)) {
+                const trioValue = Object.keys(valueCounts).find(v => valueCounts[v] === 3);
+                const pairValue = Object.keys(valueCounts).find(v => v !== trioValue && valueCounts[v] >= 2);
+                return { 
+                    rank: 'Full House', 
+                    value: 7, 
+                    highCard: RANK_VALUES[trioValue],
+                    pair: RANK_VALUES[pairValue]
+                };
+            }
+            
+            // Check for flush
+            if (isFlush) {
+                const flushSuit = suits.find(suit => suitCounts[suit] >= 5);
+                const flushCards = sortedHand.filter(card => card.suit === flushSuit);
+                return { 
+                    rank: 'Flush', 
+                    value: 6, 
+                    highCard: RANK_VALUES[flushCards[0].value]
+                };
+            }
+            
+            // Check for straight
+            if (isStraight) {
+                return { 
+                    rank: 'Straight', 
+                    value: 5, 
+                    highCard: straightHighCard
+                };
+            }
+            
+            // Check for three of a kind
+            if (counts.includes(3)) {
+                const trioValue = Object.keys(valueCounts).find(v => valueCounts[v] === 3);
+                const kickers = sortedHand
+                    .filter(card => card.value !== trioValue)
+                    .slice(0, 2)
+                    .map(card => RANK_VALUES[card.value]);
+                return { 
+                    rank: 'Three of a Kind', 
+                    value: 4, 
+                    highCard: RANK_VALUES[trioValue],
+                    kickers
+                };
+            }
+            
+            // Check for two pair
+            const pairs = Object.keys(valueCounts).filter(v => valueCounts[v] === 2);
+            if (pairs.length >= 2) {
+                const sortedPairs = pairs.sort((a, b) => RANK_VALUES[b] - RANK_VALUES[a]);
+                const kicker = sortedHand.find(card => !pairs.includes(card.value)).value;
+                return { 
+                    rank: 'Two Pair', 
+                    value: 3, 
+                    highPair: RANK_VALUES[sortedPairs[0]],
+                    lowPair: RANK_VALUES[sortedPairs[1]],
+                    kicker: RANK_VALUES[kicker]
+                };
+            }
+            
+            // Check for one pair
+            if (pairs.length === 1) {
+                const pairValue = pairs[0];
+                const kickers = sortedHand
+                    .filter(card => card.value !== pairValue)
+                    .slice(0, 3)
+                    .map(card => RANK_VALUES[card.value]);
+                return { 
+                    rank: 'One Pair', 
+                    value: 2, 
+                    highCard: RANK_VALUES[pairValue],
+                    kickers
+                };
+            }
+            
+            // High card
+            return { 
+                rank: 'High Card', 
+                value: 1, 
+                highCard: RANK_VALUES[sortedHand[0].value],
+                kickers: sortedHand.slice(1, 5).map(card => RANK_VALUES[card.value])
+            };
+        }
+
+        function compareHands(hand1, hand2) {
+            // First compare by hand value
+            if (hand1.value > hand2.value) return 1;
+            if (hand1.value < hand2.value) return -1;
+            
+            // For hands of the same rank, compare high cards
+            if (hand1.highCard > hand2.highCard) return 1;
+            if (hand1.highCard < hand2.highCard) return -1;
+            
+            // For some hands, compare kickers
+            if (hand1.kickers && hand2.kickers) {
+                for (let i = 0; i < Math.min(hand1.kickers.length, hand2.kickers.length); i++) {
+                    if (hand1.kickers[i] > hand2.kickers[i]) return 1;
+                    if (hand1.kickers[i] < hand2.kickers[i]) return -1;
+                }
+            }
+            
+            // For full house, compare the pair
+            if (hand1.pair && hand2.pair) {
+                if (hand1.pair > hand2.pair) return 1;
+                if (hand1.pair < hand2.pair) return -1;
+            }
+            
+            // For two pair, compare the second pair
+            if (hand1.lowPair && hand2.lowPair) {
+                if (hand1.lowPair > hand2.lowPair) return 1;
+                if (hand1.lowPair < hand2.lowPair) return -1;
+            }
+            
+            // If everything is equal, it's a tie
+            return 0;
+        }
+
+        function generateOpponentStrategy() {
+            return {
+                name: OPPONENT_NAMES[Math.floor(Math.random() * OPPONENT_NAMES.length)],
+                aggressiveness: 0.3 + Math.random() * 0.5,
+                bluffFactor: Math.random() * 0.3,
+                foldThreshold: 0.2 + Math.random() * 0.3,
+                callThreshold: 0.4 + Math.random() * 0.3
+            };
+        }
+
+        function HighStakesPokerPro() {
+            const [deck, setDeck] = React.useState([]);
+            const [playerHand, setPlayerHand] = React.useState([]);
+            const [communityCards, setCommunityCards] = React.useState([]);
+            const [opponents, setOpponents] = React.useState([]);
+            const [gameStatus, setGameStatus] = React.useState('Place your bet to start');
+            const [gameOver, setGameOver] = React.useState(true);
+            const [betConfirmed, setBetConfirmed] = React.useState(false);
+            const [showNotification, setShowNotification] = React.useState(false);
+            const [notificationMessage, setNotificationMessage] = React.useState('');
+            const [notificationType, setNotificationType] = React.useState('');
+            
+            const [playerBank, setPlayerBank] = React.useState(1000);
+            const [currentBet, setCurrentBet] = React.useState(50);
+            const [minBet, setMinBet] = React.useState(10);
+            const [maxBet, setMaxBet] = React.useState(500);
+            const [gameStage, setGameStage] = React.useState('preflop');
+            const [gameStats, setGameStats] = React.useState({
+                totalGames: 0,
+                wins: 0,
+                losses: 0,
+                ties: 0,
+                highestWin: 0,
+                totalBetAmount: 0
+            });
+
+            const [playerHandRank, setPlayerHandRank] = React.useState(null);
+            const [opponentHandRanks, setOpponentHandRanks] = React.useState([]);
+            const [revealAllCards, setRevealAllCards] = React.useState(false);
+
+            const displayNotification = (message, type) => {
+                setNotificationMessage(message);
+                setNotificationType(type);
+                setShowNotification(true);
+                setTimeout(() => {
+                    setShowNotification(false);
+                }, 3000);
+            };
+
+            const dealInitialCards = () => {
+                const newDeck = shuffleDeck(createDeck());
+                const initialPlayerHand = [newDeck.pop(), newDeck.pop()];
+                
+                const initialOpponents = Array(4).fill().map(() => {
+                    const opponentStrategy = generateOpponentStrategy();
+                    const opponentHand = [newDeck.pop(), newDeck.pop()];
+                    return {
+                        ...opponentStrategy,
+                        hand: opponentHand,
+                        folded: false,
+                        action: ''
+                    };
+                });
+
+                setDeck(newDeck);
+                setPlayerHand(initialPlayerHand);
+                setOpponents(initialOpponents);
+                setCommunityCards([]);
+                setGameStatus('Pre-Flop - Place your bet');
+                setGameStage('preflop');
+                setGameOver(false);
+                setPlayerHandRank(null);
+                setOpponentHandRanks([]);
+                setRevealAllCards(false);
+
+                setGameStats(prev => ({
+                    ...prev,
+                    totalGames: prev.totalGames + 1,
+                    totalBetAmount: prev.totalBetAmount + currentBet
+                }));
+            };
+
+            const simulateOpponentActions = () => {
+                const updatedOpponents = opponents.map(opponent => {
+                    if (opponent.folded) return opponent;
+                    
+                    // Evaluate opponent's hand strength with current community cards
+                    const handEvaluation = evaluatePokerHand(opponent.hand, communityCards);
+                    let handStrength;
+                    
+                    if (communityCards.length === 0) {
+                        // Pre-flop - evaluate based on hole cards only
+                        const highCard = Math.max(
+                            RANK_VALUES[opponent.hand[0].value],
+                            RANK_VALUES[opponent.hand[1].value]
+                        );
+                        const isPair = opponent.hand[0].value === opponent.hand[1].value;
+                        const isSuited = opponent.hand[0].suit === opponent.hand[1].suit;
+                        
+                        // Basic pre-flop hand strength evaluation
+                        handStrength = (highCard / 14) * 0.5; // Base on high card
+                        if (isPair) handStrength += 0.3;      // Pairs are stronger
+                        if (isSuited) handStrength += 0.1;     // Suited cards are better
+                        if (highCard >= 10) handStrength += 0.1; // Face cards are better
+                    } else {
+                        // Post-flop - use normal evaluation
+                        handStrength = handEvaluation.value / 10; // Normalize to 0-1
+                    }
+                    
+                    // Combine hand strength with opponent's personality traits
+                    const actionScore = handStrength * (1 + opponent.aggressiveness) 
+                                     + (Math.random() * 0.2 - 0.1); // Small randomness
+                    
+                    let action;
+                    if (actionScore < opponent.foldThreshold) {
+                        action = 'Fold';
+                    } else if (actionScore > opponent.callThreshold + 0.3 
+                              && opponent.aggressiveness > 0.5 
+                              && Math.random() < 0.7) {
+                        action = 'Raise';
+                    } else {
+                        action = 'Call';
+                    }
+                    
+                    // Occasionally bluff (call/raise with weak hands)
+                    if (Math.random() < opponent.bluffFactor && action === 'Fold') {
+                        action = Math.random() < 0.5 ? 'Call' : 'Raise';
+                    }
+                    
+                    return {
+                        ...opponent,
+                        folded: action === 'Fold',
+                        action
+                    };
+                });
+
+                setOpponents(updatedOpponents);
+            };
+
+            const dealCommunityCards = () => {
+                let currentDeck = [...deck];
+                let currentCommunityCards = [...communityCards];
+
+                // Burn a card before dealing
+                currentDeck.pop();
+
+                switch(gameStage) {
+                    case 'preflop':
+                        // Deal flop (3 cards)
+                        for (let i = 0; i < 3; i++) {
+                            currentCommunityCards.push(currentDeck.pop());
+                        }
+                        setGameStage('flop');
+                        setGameStatus('Flop - Community cards revealed');
+                        simulateOpponentActions();
+                        break;
+                    case 'flop':
+                        // Deal turn (1 card)
+                        currentCommunityCards.push(currentDeck.pop());
+                        setGameStage('turn');
+                        setGameStatus('Turn - Another card revealed');
+                        simulateOpponentActions();
+                        break;
+                    case 'turn':
+                        // Deal river (1 card)
+                        currentCommunityCards.push(currentDeck.pop());
+                        setGameStage('river');
+                        setGameStatus('River - Final card revealed');
+                        simulateOpponentActions();
+                        break;
+                    case 'river':
+                        setGameStage('showdown');
+                        setGameStatus('Showdown - Revealing all cards');
+                        determineWinner();
+                        break;
+                }
+
+                setDeck(currentDeck);
+                setCommunityCards(currentCommunityCards);
+            };
+
+            const determineWinner = () => {
+                setRevealAllCards(true);
+                
+                // Evaluate player's hand
+                const playerEvaluation = evaluatePokerHand(playerHand, communityCards);
+                setPlayerHandRank(playerEvaluation);
+                
+                // Evaluate opponents' hands
+                const opponentEvaluations = opponents.map(opponent => {
+                    if (opponent.folded) return null;
+                    return evaluatePokerHand(opponent.hand, communityCards);
+                });
+                
+                setOpponentHandRanks(opponentEvaluations);
+                
+                // Find active opponents (those who didn't fold)
+                const activeOpponents = opponents.filter((opponent, index) => 
+                    !opponent.folded && opponentEvaluations[index] !== null
+                );
+                
+                if (activeOpponents.length === 0) {
+                    // All opponents folded - player wins
+                    const winAmount = currentBet * (opponents.length + 1);
+                    setPlayerBank(prev => prev + winAmount);
+                    setGameStats(prev => ({
+                        ...prev,
+                        wins: prev.wins + 1,
+                        highestWin: Math.max(prev.highestWin, winAmount)
+                    }));
+                    setGameStatus(`All opponents folded! You win $${winAmount}`);
+                    displayNotification(`YOU WIN $${winAmount}!`, 'win');
+                    setGameOver(true);
+                    return;
+                }
+                
+                // Compare player's hand against active opponents
+                let isPlayerWinner = true;
+                let bestOpponentIndex = -1;
+                let bestOpponentHand = null;
+                
+                for (let i = 0; i < opponents.length; i++) {
+                    if (opponentEvaluations[i] === null) continue;
+                    
+                    const comparison = compareHands(playerEvaluation, opponentEvaluations[i]);
+                    if (comparison < 0) {
+                        isPlayerWinner = false;
+                        if (bestOpponentHand === null || 
+                            compareHands(opponentEvaluations[i], bestOpponentHand) > 0) {
+                            bestOpponentHand = opponentEvaluations[i];
+                            bestOpponentIndex = i;
+                        }
+                    } else if (comparison === 0) {
+                        // It's a tie with this opponent
+                        isPlayerWinner = false;
+                    }
+                }
+                
+                if (isPlayerWinner) {
+                    // Player has the best hand
+                    const winAmount = currentBet * (opponents.length + 1);
+                    setPlayerBank(prev => prev + winAmount);
+                    setGameStats(prev => ({
+                        ...prev,
+                        wins: prev.wins + 1,
+                        highestWin: Math.max(prev.highestWin, winAmount)
+                    }));
+                    setGameStatus(`You win with ${playerEvaluation.rank}! Prize: $${winAmount}`);
+                    displayNotification(`YOU WIN WITH ${playerEvaluation.rank}!`, 'win');
+                } else if (bestOpponentIndex !== -1) {
+                    // An opponent has a better hand
+                    const lossAmount = currentBet;
+                    setPlayerBank(prev => prev - lossAmount);
+                    setGameStats(prev => ({
+                        ...prev,
+                        losses: prev.losses + 1
+                    }));
+                    const opponentName = opponents[bestOpponentIndex].name;
+                    setGameStatus(`You lose! ${opponentName} wins with ${bestOpponentHand.rank}`);
+                    displayNotification(`${opponentName} WINS WITH ${bestOpponentHand.rank}!`, 'lose');
+                } else {
+                    // It's a tie
+                    setGameStats(prev => ({
+                        ...prev,
+                        ties: prev.ties + 1
+                    }));
+                    setGameStatus(`It's a tie! Your bet is returned`);
+                    displayNotification(`IT'S A TIE!`, 'tie');
+                }
+                
+                setGameOver(true);
+            };
+
+            const startNewGame = () => {
+                if (playerBank < minBet) {
+                    setGameStatus('Game Over: Not enough funds!');
+                    return;
+                }
+                setBetConfirmed(false);
+                setGameStatus('Place your bet to start');
+                setGameOver(true);
+                setCurrentBet(Math.min(50, playerBank));
+            };
+
+            const confirmBet = () => {
+                if (currentBet === 0) {
+                    setGameStatus('You folded this hand');
+                    setGameOver(true);
+                    return;
+                }
+                
+                if (currentBet > playerBank) {
+                    setGameStatus('Bet exceeds your bankroll!');
+                    return;
+                }
+                
+                setBetConfirmed(true);
+                dealInitialCards();
+            };
+
+            const adjustBet = (amount) => {
+                const newBet = Math.max(minBet, Math.min(maxBet, currentBet + amount));
+                if (newBet <= playerBank) {
+                    setCurrentBet(newBet);
+                }
+            };
+
+            const renderCard = (card, index) => {
+                return (
+                    <div 
+                        key={`${card.value}-${card.suit}`} 
+                        className={`card ${card.suit === '♥' || card.suit === '♦' ? 'heart' : 'club'}`}
+                        data-suit={card.suit}
+                        style={{ left: `${index * 60}px` }}
+                    >
+                        {card.value}
+                    </div>
+                );
+            };
+
+            return (
+                <div className="game-container">
+                    {showNotification && (
+                        <div className={`winner-notification ${notificationType}`}>
+                            {notificationMessage}
+                        </div>
+                    )}
+
+                    <div className="bank-display">
+                        Bank: ${playerBank}
+                    </div>
+
+                    <div className="game-info">
+                        <h1>High Stakes Poker Pro</h1>
+                        <p>{gameStatus}</p>
+                    </div>
+
+                    <div className="opponents-area">
+                        {opponents.map((opponent, index) => (
+                            <div key={index} className="opponent">
+                                <h3>{opponent.name}</h3>
+                                <div className="opponent-cards">
+                                    {opponent.hand.map((card, cardIndex) => (
+                                        <div 
+                                            key={cardIndex} 
+                                            className="opponent-card"
+                                            style={{
+                                                backgroundColor: opponent.folded 
+                                                    ? '#e74c3c' 
+                                                    : (revealAllCards 
+                                                        ? 'white' 
+                                                        : '#7f8c8d'),
+                                                color: (revealAllCards || opponent.folded) 
+                                                    ? (card.suit === '♥' || card.suit === '♦' ? 'red' : 'black')
+                                                    : 'white'
+                                            }}
+                                        >
+                                            {(revealAllCards || opponent.folded) 
+                                                ? `${card.value}${card.suit}` 
+                                                : ''}
+                                        </div>
+                                    ))}
+                                </div>
+                                {opponentHandRanks[index] && !opponent.folded && (
+                                    <div className="hand-combination">
+                                        {opponentHandRanks[index].rank}
+                                    </div>
+                                )}
+                                <p>{opponent.folded ? 'Folded' : opponent.action || 'Thinking...'}</p>
+                            </div>
+                        ))}
+                    </div>
+
+                    {!betConfirmed ? (
+                        <div className="betting-area">
+                            <div className="bet-controls">
+                                <button 
+                                    className="bet-btn" 
+                                    onClick={() => adjustBet(-10)}
+                                    disabled={currentBet <= minBet}
+                                >
+                                    -
+                                </button>
+                                <div>Current Bet: ${currentBet}</div>
+                                <button 
+                                    className="bet-btn"
+                                    onClick={() => adjustBet(10)}
+                                    disabled={currentBet >= maxBet || currentBet >= playerBank}
+                                >
+                                    +
+                                </button>
+                            </div>
+                            <button 
+                                className="confirm-bet-btn"
+                                onClick={confirmBet}
+                                disabled={currentBet > playerBank}
+                            >
+                                Confirm Bet
+                            </button>
+                        </div>
+                    ) : (
+                        <div className="betting-area">
+                            <div className="multiplier-display">
+                                Current Bet: ${currentBet}
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="player-area">
+                        <div className="dealer-hand">
+                            <h3 className="hand-title">Community Cards</h3>
+                            <div className="card-stack">
+                                {communityCards.map((card, index) => 
+                                    renderCard(card, index)
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="player-hand">
+                            <h3 className="hand-title">Your Hand</h3>
+                            <div className="card-stack">
+                                {playerHand.map((card, index) => 
+                                    renderCard(card, index)
+                                )}
+                            </div>
+                            {playerHandRank && (
+                                <div className="hand-combination">
+                                    Your Hand: {playerHandRank.rank}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {betConfirmed && !gameOver ? (
+                        <div className="game-controls">
+                            <button 
+                                className="btn" 
+                                onClick={dealCommunityCards}
+                            >
+                                {gameStage === 'river' ? 'Showdown' : 'Next Round'}
+                            </button>
+                        </div>
+                    ) : betConfirmed && gameOver ? (
+                        <div className="game-controls">
+                            <button 
+                                className="btn"
+                                onClick={startNewGame}
+                            >
+                                New Game
+                            </button>
+                        </div>
+                    ) : null}
+
+                    <div className="stats-panel">
+                        <h3>Game Statistics</h3>
+                        <p>Total Games: {gameStats.totalGames}</p>
+                        <p>Wins: {gameStats.wins}</p>
+                        <p>Losses: {gameStats.losses}</p>
+                        <p>Ties: {gameStats.ties}</p>
+                        <p>Highest Win: ${gameStats.highestWin}</p>
+                        <p>Total Bet Amount: ${gameStats.totalBetAmount}</p>
+                    </div>
+                </div>
+            );
+        }
+
+        ReactDOM.render(<HighStakesPokerPro />, document.getElementById('root'));
+    </script>
+</body>
+</html>
